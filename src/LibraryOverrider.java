@@ -35,7 +35,6 @@ public class LibraryOverrider {
 		
 		String[] lines = this.content.split("\n");
 		Functions.cleanLines(lines);
-		
 	}
 	
 	
