@@ -12,8 +12,9 @@ public class Function {
 	}
 	
 	public void addParameter(Parameter param) {
+		if(param.getName() == null) {
+			param.setName("param_" + parameters.size());
+		}
 		this.parameters.addLast(param);
 	}
-	
-	
 }
