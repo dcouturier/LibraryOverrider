@@ -33,11 +33,30 @@ public class Functions {
 	}
 
 	private static String processLine(String line) {
+		//System.out.print("\"" + line + "\" in, \"");
 		int ix = line.indexOf("//");
 		if(ix >= 0) {
-			line = line.substring(0, ix);
+			line = line.substring(0, ix) + spaces(line.length() - ix);
 		}
-		System.out.println(line);
+		//System.out.println(line + "\" out.");
 		return line;
+	}
+	
+	public static String spaces(int i) {
+		char[] spaces = new char[i];
+		for(int ix = 0; ix < i; ix++) spaces[ix] = ' ';
+		return new String(spaces);
+	}
+
+	public static String aggregate(String[] lines, String sep) {
+		if(lines.length > 0) {
+		StringBuilder strbldr = new StringBuilder();
+		int len = lines.length;
+		for(int i = 0; i < len - 1; i ++) {
+			strbldr.append(lines[i] + sep);
+		}
+		strbldr.append(lines[len - 1]);
+		return strbldr.toString();
+		} else return "";
 	}
 }

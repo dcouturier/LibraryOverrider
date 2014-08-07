@@ -40,7 +40,8 @@ public class FileCleaner {
 			ix = 0;
 			for(IntPair pair : batchComments) {
 				strbldr.append(content.substring(ix, pair.a));
-				ix = pair.b +2;
+				ix = pair.b + 2;
+				strbldr.append(Functions.spaces(pair.b-pair.a + 2));
 			}
 			strbldr.append(content.substring(ix));
 			this.content = strbldr.toString();
@@ -48,6 +49,7 @@ public class FileCleaner {
 		
 	}
 	
+
 	public String getContent() {
 		return this.content;
 	}
