@@ -94,7 +94,8 @@ public class UI extends JFrame {
 	}
 
 	protected void generateFiles() {
-		ignoreList = fIgnoreKeywordListTF.getText().split(",");		
+		ignoreList = fIgnoreKeywordListTF.getText().split(",");
+		functions = new LinkedList<Function>();
 
 		String content = fMainTA.getText();
 		FunctionParser parser = new FunctionParser(content, fExternTF.getText());
@@ -103,16 +104,22 @@ public class UI extends JFrame {
 		while((functionText = parser.getNextFunction()) != null) {
 			processFunction(functionText);
 		}
+
+		System.out.println("new line :p");
 	}
 
 	private void processFunction(Pair<String, String> functionText) {
-		functions.addLast(parseFunction(functionText));
+		try {
+			functions.addLast(parseFunction(functionText));
+		} catch (InvalidFunctionException e) {
+			e.printStackTrace();
+		}
 	}
 
-	private Function parseFunction(Pair<String, String> functionText) {
+	private Function parseFunction(Pair<String, String> functionText) throws InvalidFunctionException {
 		try {
 			int paramStart = functionText.b.indexOf('(');
-			int paramEnd = functionText.b.indexOf(')');
+			int paramEnd = functionText.b.lastIndexOf(')');
 			if(paramEnd < 0 || paramStart < 0) return null;
 
 			String commentedParams = functionText.a.substring(paramStart + 1, paramEnd);
@@ -121,7 +128,7 @@ public class UI extends JFrame {
 			int[] indexes = new int[paramsStr.length+1];
 			if(indexes.length > 0) {
 				indexes[0] = 0;
-				indexes[indexes.length - 1] = uncommentedParams.length() - 1;
+				indexes[indexes.length - 1] = uncommentedParams.length();
 			}
 			for(int i = 1; i < indexes.length - 1; i++) {
 				indexes[i] = uncommentedParams.indexOf(',', indexes[i-1] + 1);
@@ -129,72 +136,62 @@ public class UI extends JFrame {
 			int currentIndex = 0;
 
 			Function fct = new Function();
+
+			
+			// Getting the function's name
+			int functionEnd = functionText.b.indexOf('(') - 1;
+			while(Character.isWhitespace(functionEnd)) functionEnd--;
+			int functionBegin = functionEnd - 1;
+			if(functionEnd > 0) {
+				while(!Character.isWhitespace(functionText.b.charAt(functionBegin))) functionBegin--;
+			}
+			if(functionBegin < 0) throw new InvalidFunctionException("Cannot locate the function name."); 
+			String functionName = functionText.b.substring(functionBegin+1, functionEnd+1);
+			fct.setName(functionName);
+
+			// Getting the function's return type (we grab what ever is left before the name)
+			String returnType = functionText.b.substring(0, functionBegin);
+			returnType = returnType.replace(fExternTF.getText().trim(), "");
+			for(String ignore: ignoreList) {
+				returnType = returnType.replaceAll(ignore, "");
+			}
+			fct.setReturnType(returnType.trim());
+			
 			for(String eachParam : paramsStr) {
 				eachParam = eachParam.trim();
 				while(eachParam.indexOf("  ") > 0) eachParam = eachParam.replaceAll("  ", " ");
 				String type = "";
-				String name = "";
-				Parameter param = null;
-				
+				String name = null;
+
 				if(eachParam.startsWith("const ")) {
 					type = "const ";
 					eachParam = eachParam.substring(6);
 				}
-				
+
 				// Find the name
 				String[] parts = eachParam.split(" ");
 				if(parts.length > 1) {
+					for(int ix = 0; ix < parts.length - 1; ix++) {
+						type += parts[ix] + " ";
+					}
 					if(parts[parts.length - 1].matches("(\\*)?[a-zA-Z_][a-zA-Z0-9_]*")) { // if the last part matches the definition of a variable name
 						// The parts[length - 1] CAN be the name...further more validation to compute
-						if(parts.length == 2) { // check if the second item starts with a * (then we have "type *name")
-							type += parts[0];
-							if(parts[1].charAt(0) == '*') {
-								if(parts[1].length() > 1 && parts[1].charAt(1) == '*') {
-									type += "**";
-									name = parts[1].substring(2);
-								} else {
-									type += "*";
-									name = parts[1].substring(1);
-								}
+						if(parts[parts.length-1].charAt(0) == '*') {
+							if(parts[parts.length-1].length() > 1 && parts[parts.length-1].charAt(1) == '*') {
+								type += "**";
+								name = parts[parts.length-1].substring(2);
+							} else {
+								type += "*";
+								name = parts[parts.length-1].substring(1);
 							}
-						} //TODO else...
+						} 
 					} else { // The name is missing: everything left is the type
-						type += eachParam;
+						type += parts[parts.length-1];
 					}
 				} else { // only the type can be left
 					type += parts[0];
 				}
-								
-				/*
-				String[] parts = eachParam.split(" ");
-
-				int partsCount = parts.length;
-				switch(partsCount) {
-				case 1:
-					param = new Parameter(type + parts[0]);
-					break;
-				case 2:
-					if(parts[1].startsWith("*")) {
-						param = new Parameter(type + parts[0] + "*", parts[1].substring(1));
-					} else {
-						param = new Parameter(type + parts[0], parts[1]);
-					}
-					break;
-				case 3:
-					if(parts[1].matches("")) {
-						param = new Parameter(type + parts[0] + "*", parts[2]);
-					} else {
-						System.err.println("Unusual format of a parameter.");
-					}
-					break;
-				default:
-					if(eachParam.contains("(")) { // Could be a complex parameter
-						if(parts[])
-					}
-					return null;
-				}*/
-
-				if(param.getName() == null) { // Look if there is a comment with the name or generate a new name
+				if(name == null) { // Look if there is a comment with the name or generate a new name
 					String commentedParam = commentedParams.substring(indexes[currentIndex], indexes[currentIndex+1]);
 
 					int s = commentedParam.indexOf("/*");
@@ -202,16 +199,19 @@ public class UI extends JFrame {
 					if(s >= 0 && f >= 0) { //There might be the name of the parameter in the commented section (type /* variable_name */) OpenCL's cl.h is built like this
 						String insideComment = commentedParam.substring(s + 2, f).trim();
 						if(!insideComment.contains(" ")) { // One word only: assume this is the param name
-							param.setName(insideComment);
+							name = insideComment;
 						}
 					}
 				}
+
+				Parameter param = new Parameter(type, name);
 
 				fct.addParameter(param); // If there is no parameter name, the Function will automatically assign one.
 				currentIndex++;
 			}
 			return fct;
 		} catch(InvalidParameterException e) {
+			e.printStackTrace();
 			return null;
 		}
 	}

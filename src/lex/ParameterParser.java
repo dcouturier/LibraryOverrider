@@ -15,11 +15,10 @@ public class ParameterParser {
 		this.t = parameterString;
 		ch = t.charAt(ix);
 		parseNext();
-		
-		System.out.println("hey!");
 	}
 	
 	private void parseNext() throws InvalidParameterException {
+		if(ch == null) return;
 		expression();
 		
 		if(ch == null) {
@@ -45,8 +44,7 @@ public class ParameterParser {
 	private void parenthesis() throws InvalidParameterException {
 		depth++;
 		expression();
-		
-		if(ch == ')') {
+		if(ch != null && ch == ')') {
 			depth--;
 			next();
 		} else {
@@ -57,7 +55,7 @@ public class ParameterParser {
 	private void expression() throws InvalidParameterException {
 		boolean exitFlag = false;
 		while(!exitFlag) {
-			while(ch != null && isParameterText(ch) || (depth > 0 && ch == ',' /* Allow the comma if in a parenthesis (complex parameter...) */)) {
+			while(ch != null && isParameterText(ch) || (ch != null && depth > 0 && ch == ',' /* Allow the comma if in a parenthesis (complex parameter...) */)) {
 				next();
 			}
 			
@@ -90,7 +88,7 @@ public class ParameterParser {
 		return (ch >= 'A' && ch <= 'Z')	|| 
 				(ch >= 'a' && ch <= 'z')	|| 
 				(ch >= '0' && ch <= '9') ||
-				ch == '_' || ch == '*' || ch == ' ' || ch == '&' || ch == '\n' || ch == '\t';
+				ch == '_' || ch == '*' || ch == ' ' || ch == '&' || ch == '\n' || ch == '\t' || ch == '\r';
 	}
 
 	public String[] getParams() {
