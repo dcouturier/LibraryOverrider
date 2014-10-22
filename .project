@@ -3,6 +3,35 @@
 	<name>LibraryOverrider</name>
 	<comment></comment>
 	<projects>
+		<project>org.eclipse.cdt.codan.checkers</project>
+		<project>org.eclipse.cdt.codan.checkers.ui</project>
+		<project>org.eclipse.cdt.codan.core</project>
+		<project>org.eclipse.cdt.codan.core.cxx</project>
+		<project>org.eclipse.cdt.codan.ui</project>
+		<project>org.eclipse.cdt.codan.ui.cfgview</project>
+		<project>org.eclipse.cdt.codan.ui.cxx</project>
+		<project>org.eclipse.cdt.core</project>
+		<project>org.eclipse.cdt.core.linux</project>
+		<project>org.eclipse.cdt.core.linux.x86_64</project>
+		<project>org.eclipse.cdt.core.native</project>
+		<project>org.eclipse.cdt.debug.core</project>
+		<project>org.eclipse.cdt.debug.mi.core</project>
+		<project>org.eclipse.cdt.debug.mi.ui</project>
+		<project>org.eclipse.cdt.debug.ui</project>
+		<project>org.eclipse.cdt.dsf</project>
+		<project>org.eclipse.cdt.dsf.gdb</project>
+		<project>org.eclipse.cdt.dsf.gdb.ui</project>
+		<project>org.eclipse.cdt.dsf.ui</project>
+		<project>org.eclipse.cdt.gdb</project>
+		<project>org.eclipse.cdt.gdb.ui</project>
+		<project>org.eclipse.cdt.launch</project>
+		<project>org.eclipse.cdt.make.core</project>
+		<project>org.eclipse.cdt.make.ui</project>
+		<project>org.eclipse.cdt.managedbuilder.core</project>
+		<project>org.eclipse.cdt.managedbuilder.gnu.ui</project>
+		<project>org.eclipse.cdt.managedbuilder.ui</project>
+		<project>org.eclipse.cdt.target</project>
+		<project>org.eclipse.cdt.ui</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

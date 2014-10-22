@@ -2,7 +2,14 @@ import java.awt.BorderLayout;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.rmi.UnexpectedException;
+import java.util.Enumeration;
 import java.util.LinkedList;
 
 import javax.swing.JButton;
@@ -14,6 +21,8 @@ import javax.swing.JScrollBar;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
+
+import org.eclipse.cdt.internal.qt.ui.QObjectConnectCompletion.Param;
 
 import element.Function;
 import element.Parameter;
@@ -67,7 +76,7 @@ public class UI extends JFrame {
 		JLabel ignoreListLabel = new JLabel("Ignore keyword list");
 		ignoreListLabel.setToolTipText("<html>If the header contains some empty defines that may be ignored,<br />list them here. Separate them with comas.</html>");
 		topPanel.add(ignoreListLabel);
-		fIgnoreKeywordListTF = new JTextField();
+		fIgnoreKeywordListTF = new JTextField("CL_API_CALL,CL_API_ENTRY,CL_EXT_PREFIX__VERSION_2_0_DEPRECATED,CL_EXT_PREFIX__VERSION_1_1_DEPRECATED,CL_EXT_PREFIX__VERSION_1_0_DEPRECATED");
 		topPanel.add(fIgnoreKeywordListTF);
 
 		mainPanel.add(topPanel, BorderLayout.NORTH);
@@ -104,8 +113,90 @@ public class UI extends JFrame {
 		while((functionText = parser.getNextFunction()) != null) {
 			processFunction(functionText);
 		}
+		String header = genHeader();
+		String code = genCode();
 
-		System.out.println("new line :p");
+		save(header, "gen_clust.h");
+		save(code, "gen_clust.c");
+		
+		/*Enumeration<String> keys = Function.types.keys();
+		String key = null;
+		while(keys.hasMoreElements()) {
+			key = keys.nextElement();
+			Integer count = Function.types.get(key);
+			System.out.println(key + " : " + count);
+		}*/
+		System.out.println("done");
+	}
+
+	private void save(String content, String filepath) {
+		PrintWriter out;
+		try {
+			out = new PrintWriter(filepath);
+			out.write(content);
+			System.out.println("Written: " + new File(filepath).getAbsoluteFile());
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		}
+	}
+
+	private String genCode() {
+		StringBuilder strbldr = new StringBuilder("#include \"clust.h\"\n#include <dlfcn.h>\n#include <stdlib.h>\n\n");
+
+		strbldr.append("#ifdef __cplusplus\n\"C\" {\n#endif\n\n");
+
+		for(Function fct : functions) {
+			strbldr.append("cl_api_call_" + fct.getName() + " " + "reallib_" + fct.getName() + ";\n");
+		}
+		
+		strbldr.append("\n\nvoid* dlSymFunction(void* libPtr, const char* functionName) {\n"
+				+ "\tvoid* ptr;\n"
+				+ "\t*(void**)(&ptr) = dlsym(libPtr, functionName);\n"
+				+ "\tif(!ptr) {\n"
+				+ "\t\tfprintf(stderr, \"%s: Unable to load %s\\n\", LIB_NAME, functionName);\n"
+				+ "\t\texit(EXIT_FAILURE);\n"
+				+ "\t}\n"
+				+ "\treturn ptr;\n}");
+
+		strbldr.append("\n\n__attribute__((constructor)) void libCLUST() {\n"
+				+ "\tvoid* libcl_ptr;\n\tdlerror();\n"
+				+ "\tlibcl_ptr = dlopen(LIBCL_NAME, RTLD_LAZY);\n\n"
+				+ "\tif(!libcl_ptr) {\n"
+				+ "\t\tfprintf(stderr, \"%s: Unable to load %s\\n\", LIB_NAME, LIBCL_NAME);\n"
+				+ "\t\texit(EXIT_FAILURE);\n"
+				+ "\t}\n\n"
+				+ "\tdlerror();\n");
+		
+		for(Function fct : functions) {
+			strbldr.append("\treallib_" + fct.getName() + " = (cl_api_call_" + fct.getName() + ") dlSymFunction(libcl_ptr, \"" + fct.getName() + "\");\n");
+		}
+		
+		strbldr.append("}\n\n");
+		
+		for(Function fct : functions) {
+			strbldr.append(fct.getTracepointDeclaration() + "\n" + fct.getInstrumentedFunctionCode() + "\n\n");
+		}
+		
+		strbldr.append("#ifdef __cplusplus\n}\n#endif\n\n#endif");
+
+		return strbldr.toString();
+	}
+
+	private String genHeader() {
+
+		StringBuilder strbldr = new StringBuilder("#idndef CLUST_H_\n#define CLUST_H_\n\n#include <CL/cl.h>\n\n");
+
+		strbldr.append("#define LIB_NAME \"libCLUST\"\n#define LIBCL_NAME \"libOpenCL.so\"\n");
+		
+		strbldr.append("#ifdef __cplusplus\n\"C\" {\n#endif\n\n");
+
+		for(Function fct : functions) {
+			strbldr.append(fct.getHeaderTypeDef() + "\n\n");
+		}
+
+		strbldr.append("#ifdef __cplusplus\n}\n#endif\n\n#endif");
+
+		return strbldr.toString();
 	}
 
 	private void processFunction(Pair<String, String> functionText) {
@@ -151,6 +242,11 @@ public class UI extends JFrame {
 
 			// Getting the function's return type (we grab what ever is left before the name)
 			String returnType = functionText.b.substring(0, functionBegin);
+			
+			int fctparend = functionText.b.lastIndexOf(')')+1;
+			int fctpvend = functionText.b.lastIndexOf(';');
+			String suffix = functionText.b.substring(fctparend, fctpvend);
+			fct.setSufix(suffix);
 			returnType = returnType.replace(fExternTF.getText().trim(), "");
 			for(String ignore: ignoreList) {
 				returnType = returnType.replaceAll(ignore, "");
