@@ -49,6 +49,12 @@ public class Function {
 			param.setName("param_" + parameters.size());
 		}
 		if(param.getType().equals("void")) return;
+		                                
+		else if(param.getType().contains("CL_CALLBACK *")) {  
+			param.setType(param.getType().replaceAll("CL\\_CALLBACK \\*", "CL_CALLBACK * pfn_notify"));
+		} else if (param.getType().equals("void (*user_func)(void *)")) {
+			param.setName("user_func");
+		}
 
 		if(!types.containsKey(param.getType())) {
 			types.put(param.getType(), 1);
@@ -66,7 +72,7 @@ public class Function {
 
 		while(params.hasNext()) {
 			Parameter param = params.next();
-			strbldr.append(param.getType() + " " + param.getName());
+			strbldr.append(param.getType() + " " + param.getName().replaceAll("pfn_notify", "").replaceAll("user_func", ""));
 
 			if(params.hasNext()) {
 				strbldr.append(", ");
@@ -81,65 +87,71 @@ public class Function {
 	}
 	
 	public String getTracepointDeclaration() {
-		StringBuilder strbldr = new StringBuilder("TRACEPOINT_EVENT(\n"
-				+ "\t/* tracepoint provider name */\n"
-				+ "\t" + tracepoint_provider + ",\n\n"
-				+ "\t/* tracepoint/event name */\n"
-				+ "\tclust_" + this.name + ",\n\n"
-				+ "\tTP_ARGS(\n");
-
-		int paramSize = this.parameters.size();
-		for(int i = 0; i < paramSize - 1; i++) {
-			Parameter param = this.parameters.get(i);
-			strbldr.append("\t\t" + param.getType() + ", " + param.getName() + ",\n");
-		}		
-
-		// Add the last param without the coma
-		if(paramSize > 0) {
-			Parameter param = this.parameters.get(paramSize - 1);
-			strbldr.append("\t\t" + param.getType() + ", " + param.getName() + "\n");
-		}
-
-		// Adding this fields
-		strbldr.append("\t),\n" 
-				+ "\tTP_FIELDS(\n");
-
-		for(int i = 0; i < paramSize; i++) {
-			Parameter param = this.parameters.get(i);
-			String type = param.getType();
-			String res = "ctf_integer";
-			String value = param.getName();
-			if(map.containsKey(type)) {
-				res = map.get(type);
-			}			
-			strbldr.append("\t\t" + res + "(" + param.getType() + ", " + param.getName() + "_field, " + value + ")\n");
-		}		
-		strbldr.append("\t)\n"
-				+ ")");
-		return strbldr.toString();
+//		StringBuilder strbldr = new StringBuilder("TRACEPOINT_EVENT(\n"
+//				+ "\t/* tracepoint provider name */\n"
+//				+ "\t" + tracepoint_provider + ",\n\n"
+//				+ "\t/* tracepoint/event name */\n"
+//				+ "\tclust_" + this.name + ",\n\n"
+//				+ "\tTP_ARGS(\n");
+//
+//		int paramSize = this.parameters.size();
+//		for(int i = 0; i < paramSize - 1; i++) {
+//			Parameter param = this.parameters.get(i);
+//			strbldr.append("\t\t" + param.getType() + ", " + param.getName() + ",\n");
+//		}		
+//
+//		// Add the last param without the coma
+//		if(paramSize > 0) {
+//			Parameter param = this.parameters.get(paramSize - 1);
+//			strbldr.append("\t\t" + param.getType() + ", " + param.getName() + "\n");
+//		}
+//
+//		// Adding this fields
+//		strbldr.append("\t),\n" 
+//				+ "\tTP_FIELDS(\n");
+//
+//		for(int i = 0; i < paramSize; i++) {
+//			Parameter param = this.parameters.get(i);
+//			String type = param.getType();
+//			String res = "ctf_integer";
+//			String value = param.getName();
+//			if(map.containsKey(type)) {
+//				res = map.get(type);
+//			}			
+//			strbldr.append("\t\t" + res + "(" + param.getType() + ", " + param.getName() + "_field, " + value + ")\n");
+//		}		
+//		strbldr.append("\t)\n"
+//				+ ")");
+//		return strbldr.toString();
+		return "";
 	}
 
 	public String getInstrumentedFunctionCode() {
 		int paramSize = this.parameters.size();
 		StringBuilder strbldr = new StringBuilder();
-		strbldr.append(getCoreHeader() + " {\n"
-				+ "\ttracepoint(" + tracepoint_provider + ", clust_" + this.name);
+		String core = getCoreHeader();
+		core = core.replaceAll("\\[3\\]", "");
+		
+		strbldr.append(core + " {\n"
+				+ "\ttracepoint(" + tracepoint_provider + ", clust_tracepoint, \"" + this.name + "\""
+						+ "");
 				
-		for(Parameter param: parameters) {
-			strbldr.append(", " + param.getName());
-		}
+		// API CALL parameters
+//		for(Parameter param: parameters) {
+//			strbldr.append(", " + param.getName());
+//		}
 
-		strbldr.append(");\n"
-				+ "\t" + this.returnType + " ret = reallib_" + this.name + "(");
+		strbldr.append(");\n");
+		strbldr.append("\t" + this.returnType + " ret = reallib_" + this.name + "(");
 		
 		for(int i = 0; i < paramSize - 1; i++) {
 			Parameter param = this.parameters.get(i);
-			strbldr.append(param.getName() + ", ");
+			strbldr.append(param.getName().replaceAll("\\[3\\]", "") + ", ");
 		}
 		
 		if(paramSize > 0) {
 			Parameter param = this.parameters.get(paramSize - 1);
-			strbldr.append(param.getName());
+			strbldr.append(param.getName().replaceAll("\\[3\\]", ""));
 		}
 		
 		strbldr.append(");\n"
@@ -148,21 +160,21 @@ public class Function {
 	}
 	
 	public String getHeaderTypeDef() {
-		StringBuilder strbldr = new StringBuilder("typdef " + this.returnType + " (*cl_api_call_" +  this.getName() + ") (");
+		StringBuilder strbldr = new StringBuilder("typedef " + this.returnType + " (*cl_api_call_" +  this.getName() + ") (");
 		
 		int paramSize = this.parameters.size();
 		for(int i = 0; i < paramSize - 1; i++) {
 			Parameter param = this.parameters.get(i);
-			strbldr.append(param.getType() + " " + param.getName() + ",");
+			strbldr.append(param.getType() + " " + param.getName().replaceAll("pfn_notify", "").replaceAll("user_func", "") + ",");
 		}
 		
 		if(paramSize > 0) {
 			Parameter param = this.parameters.get(paramSize - 1);
-			strbldr.append(param.getType() + " " + param.getName());
+			strbldr.append(param.getType() + " " + param.getName().replaceAll("pfn_notify", "").replaceAll("user_func", ""));
 		}
 		strbldr.append(");\nextern cl_api_call_" +  this.getName() + " reallib_" +  this.getName() + ";\n"
-				+ "extern " + this.getCoreHeader() + ";");
+				+ "extern " + this.getCoreHeader().replaceAll("\\[3\\]", "") + ";");
 		
-		return null;
+		return strbldr.toString();
 	}
 }

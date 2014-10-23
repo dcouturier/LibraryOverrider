@@ -8,33 +8,26 @@ import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.rmi.UnexpectedException;
-import java.util.Enumeration;
 import java.util.LinkedList;
 
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
-import javax.swing.JList;
 import javax.swing.JPanel;
-import javax.swing.JScrollBar;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 
-import org.eclipse.cdt.internal.qt.ui.QObjectConnectCompletion.Param;
-
-import element.Function;
-import element.Parameter;
-import lex.FileCleaner;
 import lex.FunctionParser;
 import lex.InvalidParameterException;
 import lex.ParameterParser;
-import utils.Functions;
 import utils.Pair;
+import element.Function;
+import element.Parameter;
 
 
 public class UI extends JFrame {
+	public static final String F_NAME = "clust";
 
 	JTextArea fMainTA; 
 	JTextField fExternTF, fIgnoreKeywordListTF;
@@ -116,8 +109,8 @@ public class UI extends JFrame {
 		String header = genHeader();
 		String code = genCode();
 
-		save(header, "gen_clust.h");
-		save(code, "gen_clust.c");
+		save(header, F_NAME + ".h");
+		save(code, F_NAME + ".c");
 		
 		/*Enumeration<String> keys = Function.types.keys();
 		String key = null;
@@ -130,18 +123,34 @@ public class UI extends JFrame {
 	}
 
 	private void save(String content, String filepath) {
-		PrintWriter out;
+		FileWriter fw = null;
+		BufferedWriter bw = null;
 		try {
-			out = new PrintWriter(filepath);
-			out.write(content);
-			System.out.println("Written: " + new File(filepath).getAbsoluteFile());
-		} catch (FileNotFoundException e) {
+			fw = new FileWriter(new File(filepath));
+			bw = new BufferedWriter(fw);
+			bw.write(content);
+		} catch (IOException e) {
 			e.printStackTrace();
+		} finally {
+			if(bw != null) {
+				try {
+					bw.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+			if(fw != null) {
+				try {
+					fw.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
 		}
 	}
 
 	private String genCode() {
-		StringBuilder strbldr = new StringBuilder("#include \"clust.h\"\n#include <dlfcn.h>\n#include <stdlib.h>\n\n");
+		StringBuilder strbldr = new StringBuilder("#include \""+F_NAME+".h\"\n#include <dlfcn.h>\n#include <stdlib.h>\n#include <stdio.h>\n\n");
 
 		strbldr.append("#ifdef __cplusplus\n\"C\" {\n#endif\n\n");
 
@@ -177,18 +186,33 @@ public class UI extends JFrame {
 			strbldr.append(fct.getTracepointDeclaration() + "\n" + fct.getInstrumentedFunctionCode() + "\n\n");
 		}
 		
-		strbldr.append("#ifdef __cplusplus\n}\n#endif\n\n#endif");
+		strbldr.append("#ifdef __cplusplus\n}\n#endif");
 
 		return strbldr.toString();
 	}
 
 	private String genHeader() {
 
-		StringBuilder strbldr = new StringBuilder("#idndef CLUST_H_\n#define CLUST_H_\n\n#include <CL/cl.h>\n\n");
+		StringBuilder strbldr = new StringBuilder("#ifndef CLUST_H_\n#define CLUST_H_\n\n#include <CL/cl.h>\n\n");
+
+		strbldr.append("#undef TRACEPOINT_PROVIDER\n"
+				+ "#define TRACEPOINT_PROVIDER clust_provider\n"
+				+ "#undef TRACEPOINT_INCLUDE_FILE\n"
+				+ "#define TRACEPOINT_INCLUDE_FILE ./"+F_NAME+".h\n"
+				+ "#include <lttng/tracepoint.h>\n");
 
 		strbldr.append("#define LIB_NAME \"libCLUST\"\n#define LIBCL_NAME \"libOpenCL.so\"\n");
 		
-		strbldr.append("#ifdef __cplusplus\n\"C\" {\n#endif\n\n");
+		strbldr.append("#ifdef __cplusplus\n\"C\" {\n#endif\n\n"
+				+ "TRACEPOINT_EVENT(\n"
+				+ "\tclust_provider,\n"
+				+ "\tclust_tracepoint,\n"
+				+ "\tTP_ARGS(char *, text),\n"
+				+ "\tTP_FIELDS(\n"
+				+ "\tctf_string(message, text)\n"
+				+ "\t)\n"
+				+ ")\n\n"
+				+ "#include <lttng/tracepoint-event.h>\n");
 
 		for(Function fct : functions) {
 			strbldr.append(fct.getHeaderTypeDef() + "\n\n");
