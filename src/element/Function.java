@@ -87,43 +87,42 @@ public class Function {
 	}
 	
 	public String getTracepointDeclaration() {
-//		StringBuilder strbldr = new StringBuilder("TRACEPOINT_EVENT(\n"
-//				+ "\t/* tracepoint provider name */\n"
-//				+ "\t" + tracepoint_provider + ",\n\n"
-//				+ "\t/* tracepoint/event name */\n"
-//				+ "\tclust_" + this.name + ",\n\n"
-//				+ "\tTP_ARGS(\n");
-//
-//		int paramSize = this.parameters.size();
-//		for(int i = 0; i < paramSize - 1; i++) {
-//			Parameter param = this.parameters.get(i);
-//			strbldr.append("\t\t" + param.getType() + ", " + param.getName() + ",\n");
-//		}		
-//
-//		// Add the last param without the coma
-//		if(paramSize > 0) {
-//			Parameter param = this.parameters.get(paramSize - 1);
-//			strbldr.append("\t\t" + param.getType() + ", " + param.getName() + "\n");
-//		}
-//
-//		// Adding this fields
-//		strbldr.append("\t),\n" 
-//				+ "\tTP_FIELDS(\n");
-//
-//		for(int i = 0; i < paramSize; i++) {
-//			Parameter param = this.parameters.get(i);
-//			String type = param.getType();
-//			String res = "ctf_integer";
-//			String value = param.getName();
-//			if(map.containsKey(type)) {
-//				res = map.get(type);
-//			}			
-//			strbldr.append("\t\t" + res + "(" + param.getType() + ", " + param.getName() + "_field, " + value + ")\n");
-//		}		
-//		strbldr.append("\t)\n"
-//				+ ")");
-//		return strbldr.toString();
-		return "";
+		StringBuilder strbldr = new StringBuilder("TRACEPOINT_EVENT(\n"
+				+ "\t/* tracepoint provider name */\n"
+				+ "\t" + tracepoint_provider + ",\n\n"
+				+ "\t/* tracepoint/event name */\n"
+				+ "\tclust_" + this.name + ",\n\n"
+				+ "\tTP_ARGS(\n");
+
+		int paramSize = this.parameters.size();
+		for(int i = 0; i < paramSize - 1; i++) {
+			Parameter param = this.parameters.get(i);
+			strbldr.append("\t\t" + param.getType() + ", " + param.getName().replaceAll("\\[3\\]","") + ",\n");
+		}		
+
+		// Add the last param without the coma
+		if(paramSize > 0) {
+			Parameter param = this.parameters.get(paramSize - 1);
+			strbldr.append("\t\t" + param.getType() + ", " + param.getName().replaceAll("\\[3\\]","") + "\n");
+		}
+
+		// Adding this fields
+		strbldr.append("\t),\n" 
+				+ "\tTP_FIELDS(\n");
+
+		for(int i = 0; i < paramSize; i++) {
+			Parameter param = this.parameters.get(i);
+			String type = param.getType();
+			String res = "ctf_integer";
+			String value = param.getName().replaceAll("\\[3\\]","");
+			if(map.containsKey(type)) {
+				res = map.get(type);
+			}			
+			strbldr.append("\t\t" + res + "(" + param.getType() + ", " + param.getName().replaceAll("\\[3\\]","") + "_field, " + value + ")\n");
+		}		
+		strbldr.append("\t)\n"
+				+ ")\n");
+		return strbldr.toString();
 	}
 
 	public String getInstrumentedFunctionCode() {
@@ -133,13 +132,12 @@ public class Function {
 		core = core.replaceAll("\\[3\\]", "");
 		
 		strbldr.append(core + " {\n"
-				+ "\ttracepoint(" + tracepoint_provider + ", clust_tracepoint, \"" + this.name + "\""
-						+ "");
+				+ "\ttracepoint(" + tracepoint_provider + ", clust_" + this.name);
 				
 		// API CALL parameters
-//		for(Parameter param: parameters) {
-//			strbldr.append(", " + param.getName());
-//		}
+		for(Parameter param: parameters) {
+			strbldr.append(", " + param.getName().replaceAll("\\[3\\]", ""));
+		}
 
 		strbldr.append(");\n");
 		strbldr.append("\t" + this.returnType + " ret = reallib_" + this.name + "(");

@@ -108,9 +108,11 @@ public class UI extends JFrame {
 		}
 		String header = genHeader();
 		String code = genCode();
+		String tp = genTPs();
 
 		save(header, F_NAME + ".h");
 		save(code, F_NAME + ".c");
+		save(tp, F_NAME + "_tp.h");
 		
 		/*Enumeration<String> keys = Function.types.keys();
 		String key = null;
@@ -149,15 +151,47 @@ public class UI extends JFrame {
 		}
 	}
 
+	private String genTPs() {
+		StringBuilder strbldr = new StringBuilder(
+				"#undef TRACEPOINT_PROVIDER\n" +
+				"#define TRACEPOINT_PROVIDER clust_provider\n" +
+				"\n" +
+				"#undef TRACEPOINT_INCLUDE\n" +
+				"#define TRACEPOINT_INCLUDE \"./clust_tp.h\"\n" +
+				"\n" +
+				"#if !defined(_CLUST_TP_H) || defined(TRACEPOINT_HEADER_MULTI_READ)\n" +
+				"#define _CLUST_TP_H\n" +
+				"\n" +
+				"#include <lttng/tracepoint.h>\n");
+		
+		for(Function fct : functions) {
+			strbldr.append(fct.getTracepointDeclaration());
+		}
+		
+		strbldr.append(
+				"#endif /* _CLUST_TP_H */\n" +
+				"\n" +
+				"#include <lttng/tracepoint-event.h>");
+		return strbldr.toString();
+	}
+
 	private String genCode() {
-		StringBuilder strbldr = new StringBuilder("#include \""+F_NAME+".h\"\n#include <dlfcn.h>\n#include <stdlib.h>\n#include <stdio.h>\n\n");
+		StringBuilder strbldr = new StringBuilder("#define _GNU_SOURCE\n\n"
+				+ "#include <dlfcn.h>\n"
+				+ "#include <stdlib.h>\n"
+				+ "#include <stdio.h>\n"
+				+ "#include \""+F_NAME+".h\"\n"
+				+ "\n"
+				+ "#define TRACEPOINT_DEFINE\n"
+				+ "#define TRACEPOINT_CREATE_PROBES\n"
+				+ "#include \""+F_NAME+"_tp.h\"\n\n");
 
 		strbldr.append("#ifdef __cplusplus\n\"C\" {\n#endif\n\n");
 
 		for(Function fct : functions) {
 			strbldr.append("cl_api_call_" + fct.getName() + " " + "reallib_" + fct.getName() + ";\n");
 		}
-		
+
 		strbldr.append("\n\nvoid* dlSymFunction(void* libPtr, const char* functionName) {\n"
 				+ "\tvoid* ptr;\n"
 				+ "\t*(void**)(&ptr) = dlsym(libPtr, functionName);\n"
@@ -183,7 +217,7 @@ public class UI extends JFrame {
 		strbldr.append("}\n\n");
 		
 		for(Function fct : functions) {
-			strbldr.append(fct.getTracepointDeclaration() + "\n" + fct.getInstrumentedFunctionCode() + "\n\n");
+			strbldr.append(fct.getInstrumentedFunctionCode() + "\n\n");
 		}
 		
 		strbldr.append("#ifdef __cplusplus\n}\n#endif");
@@ -195,24 +229,9 @@ public class UI extends JFrame {
 
 		StringBuilder strbldr = new StringBuilder("#ifndef CLUST_H_\n#define CLUST_H_\n\n#include <CL/cl.h>\n\n");
 
-		strbldr.append("#undef TRACEPOINT_PROVIDER\n"
-				+ "#define TRACEPOINT_PROVIDER clust_provider\n"
-				+ "#undef TRACEPOINT_INCLUDE_FILE\n"
-				+ "#define TRACEPOINT_INCLUDE_FILE ./"+F_NAME+".h\n"
-				+ "#include <lttng/tracepoint.h>\n");
-
 		strbldr.append("#define LIB_NAME \"libCLUST\"\n#define LIBCL_NAME \"libOpenCL.so\"\n");
 		
-		strbldr.append("#ifdef __cplusplus\n\"C\" {\n#endif\n\n"
-				+ "TRACEPOINT_EVENT(\n"
-				+ "\tclust_provider,\n"
-				+ "\tclust_tracepoint,\n"
-				+ "\tTP_ARGS(char *, text),\n"
-				+ "\tTP_FIELDS(\n"
-				+ "\tctf_string(message, text)\n"
-				+ "\t)\n"
-				+ ")\n\n"
-				+ "#include <lttng/tracepoint-event.h>\n");
+		strbldr.append("#ifdef __cplusplus\n\"C\" {\n#endif\n\n");
 
 		for(Function fct : functions) {
 			strbldr.append(fct.getHeaderTypeDef() + "\n\n");
