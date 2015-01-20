@@ -43,16 +43,4 @@
 	<natures>
 		<nature>org.eclipse.jdt.core.javanature</nature>
 	</natures>
-	<linkedResources>
-		<link>
-			<name>his/sinoscope_kernel.cl</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/Documents/inf8601/inf8601-lab2-2.1.2/src/sinoscope_kernel.cl</locationURI>
-		</link>
-		<link>
-			<name>his/sinoscope_opencl.cpp</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/Documents/inf8601/inf8601-lab2-2.1.2/src/sinoscope_opencl.cpp</locationURI>
-		</link>
-	</linkedResources>
 </projectDescription>

@@ -1,0 +1,23 @@
+#ifndef CLUST_H_
+#define CLUST_H_
+
+//#define __DEBUG__
+
+#include <CL/cl.h>
+#define LIB_NAME "libCLUST"
+#define LIBCL_NAME "libOpenCL.so"
+
+#ifdef __cplusplus
+"C" {
+#endif
+
+typedef int bool;
+enum { false, true };
+
+[[[functionprototypes]]]
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

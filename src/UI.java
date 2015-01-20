@@ -2,12 +2,17 @@ import java.awt.BorderLayout;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.BufferedInputStream;
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.PrintWriter;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.nio.file.Files;
 import java.util.LinkedList;
 
 import javax.swing.JButton;
@@ -27,6 +32,8 @@ import element.Parameter;
 
 
 public class UI extends JFrame {
+	private static String functions_txt = "";
+	
 	public static final String F_NAME = "clust";
 
 	JTextArea fMainTA; 
@@ -74,7 +81,7 @@ public class UI extends JFrame {
 
 		mainPanel.add(topPanel, BorderLayout.NORTH);
 		// Middle section
-		fMainTA = new JTextArea();
+		fMainTA = new JTextArea(functions_txt);
 
 		JScrollPane jsp = new JScrollPane(fMainTA);
 
@@ -108,11 +115,9 @@ public class UI extends JFrame {
 		}
 		String header = genHeader();
 		String code = genCode();
-		String tp = genTPs();
 
 		save(header, F_NAME + ".h");
 		save(code, F_NAME + ".c");
-		save(tp, F_NAME + "_tp.h");
 		
 		/*Enumeration<String> keys = Function.types.keys();
 		String key = null;
@@ -151,95 +156,75 @@ public class UI extends JFrame {
 		}
 	}
 
-	private String genTPs() {
-		StringBuilder strbldr = new StringBuilder(
-				"#undef TRACEPOINT_PROVIDER\n" +
-				"#define TRACEPOINT_PROVIDER clust_provider\n" +
-				"\n" +
-				"#undef TRACEPOINT_INCLUDE\n" +
-				"#define TRACEPOINT_INCLUDE \"./clust_tp.h\"\n" +
-				"\n" +
-				"#if !defined(_CLUST_TP_H) || defined(TRACEPOINT_HEADER_MULTI_READ)\n" +
-				"#define _CLUST_TP_H\n" +
-				"\n" +
-				"#include <lttng/tracepoint.h>\n");
-		
-		for(Function fct : functions) {
-			strbldr.append(fct.getTracepointDeclaration());
-		}
-		
-		strbldr.append(
-				"#endif /* _CLUST_TP_H */\n" +
-				"\n" +
-				"#include <lttng/tracepoint-event.h>");
-		return strbldr.toString();
-	}
-
 	private String genCode() {
-		StringBuilder strbldr = new StringBuilder("#define _GNU_SOURCE\n\n"
-				+ "#include <dlfcn.h>\n"
-				+ "#include <stdlib.h>\n"
-				+ "#include <stdio.h>\n"
-				+ "#include \""+F_NAME+".h\"\n"
-				+ "\n"
-				+ "#define TRACEPOINT_DEFINE\n"
-				+ "#define TRACEPOINT_CREATE_PROBES\n"
-				+ "#include \""+F_NAME+"_tp.h\"\n\n");
-
-		strbldr.append("#ifdef __cplusplus\n\"C\" {\n#endif\n\n");
+		
+		String template = getRessourceAsString("clust.c.template");
+		
+		StringBuilder strbldr = new StringBuilder();
 
 		for(Function fct : functions) {
 			strbldr.append("cl_api_call_" + fct.getName() + " " + "reallib_" + fct.getName() + ";\n");
 		}
-
-		strbldr.append("\n\nvoid* dlSymFunction(void* libPtr, const char* functionName) {\n"
-				+ "\tvoid* ptr;\n"
-				+ "\t*(void**)(&ptr) = dlsym(libPtr, functionName);\n"
-				+ "\tif(!ptr) {\n"
-				+ "\t\tfprintf(stderr, \"%s: Unable to load %s\\n\", LIB_NAME, functionName);\n"
-				+ "\t\texit(EXIT_FAILURE);\n"
-				+ "\t}\n"
-				+ "\treturn ptr;\n}");
-
-		strbldr.append("\n\n__attribute__((constructor)) void libCLUST() {\n"
-				+ "\tvoid* libcl_ptr;\n\tdlerror();\n"
-				+ "\tlibcl_ptr = dlopen(LIBCL_NAME, RTLD_LAZY);\n\n"
-				+ "\tif(!libcl_ptr) {\n"
-				+ "\t\tfprintf(stderr, \"%s: Unable to load %s\\n\", LIB_NAME, LIBCL_NAME);\n"
-				+ "\t\texit(EXIT_FAILURE);\n"
-				+ "\t}\n\n"
-				+ "\tdlerror();\n");
+		
+		template = template.replaceAll("\\[\\[\\[reallibdefines\\]\\]\\]", strbldr.toString());
+		
+		strbldr = new StringBuilder();
 		
 		for(Function fct : functions) {
 			strbldr.append("\treallib_" + fct.getName() + " = (cl_api_call_" + fct.getName() + ") dlSymFunction(libcl_ptr, \"" + fct.getName() + "\");\n");
 		}
 		
-		strbldr.append("}\n\n");
+		template = template.replaceAll("\\[\\[\\[reallibdlsym\\]\\]\\]", strbldr.toString());
+
+		strbldr = new StringBuilder();
+		
 		
 		for(Function fct : functions) {
-			strbldr.append(fct.getInstrumentedFunctionCode() + "\n\n");
+			strbldr.append(fct.getTracepointDeclaration() + "\n" + fct.getInstrumentedFunctionCode() + "\n\n");
 		}
-		
-		strbldr.append("#ifdef __cplusplus\n}\n#endif");
 
-		return strbldr.toString();
+		template = template.replaceAll("\\[\\[\\[functions\\]\\]\\]", strbldr.toString());
+		
+		return template;
 	}
 
 	private String genHeader() {
-
-		StringBuilder strbldr = new StringBuilder("#ifndef CLUST_H_\n#define CLUST_H_\n\n#include <CL/cl.h>\n\n");
-
-		strbldr.append("#define LIB_NAME \"libCLUST\"\n#define LIBCL_NAME \"libOpenCL.so\"\n");
 		
-		strbldr.append("#ifdef __cplusplus\n\"C\" {\n#endif\n\n");
+		String template = getRessourceAsString("clust.h.template");
 
+		StringBuilder strbldr = new StringBuilder();
 		for(Function fct : functions) {
 			strbldr.append(fct.getHeaderTypeDef() + "\n\n");
 		}
+		
+		template = template.replaceAll("\\[\\[\\[functionprototypes\\]\\]\\]", strbldr.toString());
 
-		strbldr.append("#ifdef __cplusplus\n}\n#endif\n\n#endif");
-
-		return strbldr.toString();
+		return template;
+	}
+	
+	private String getRessourceAsString(String ressourcePath) {
+		InputStream is = UI.class.getResourceAsStream(ressourcePath);
+		Reader r = new InputStreamReader(is);
+		BufferedReader br = new BufferedReader(r);
+		StringBuilder stb = new StringBuilder();
+		String line = null;
+		try {
+			while((line = br.readLine()) != null) {
+				stb.append(line + "\n");
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				br.close();
+				r.close();
+				is.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+		
+		return stb.toString();
 	}
 
 	private void processFunction(Pair<String, String> functionText) {
@@ -360,6 +345,30 @@ public class UI extends JFrame {
 	}
 
 	public static void main(String[] args) {
+		
+		InputStream is = UI.class.getResourceAsStream("cl.h.functions.txt");
+		Reader r = new InputStreamReader(is);
+		BufferedReader br = new BufferedReader(r);
+		StringBuilder stb = new StringBuilder();
+		String line = null;
+		try {
+			while((line = br.readLine()) != null) {
+				stb.append(line + "\n");
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				br.close();
+				r.close();
+				is.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+		
+		functions_txt = stb.toString();
+		
 		new UI();
 	}
 }
