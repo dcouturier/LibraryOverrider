@@ -1,27 +1,17 @@
 package element;
 
-import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.LinkedList;
 
 public class Function {
 	public static final String tracepoint_provider = "clust_provider";
-	static final HashMap<String, String> map = new HashMap<String, String>() {/**
-	 * 
-	 */
-		private static final long serialVersionUID = -6922446112927083855L;
-
-		{
-			put("cl_int", "ctf_integer");
-		}};
-
+	
 		public static Hashtable<String,Integer> types = new Hashtable<String, Integer>();
 
 		private LinkedList<Parameter> parameters = new LinkedList<Parameter>();
 		private String name = "";
 		private String returnType = "";
-		private String suffix = "";
 
 		public void setName(String name) {
 			this.name = name;
@@ -29,11 +19,6 @@ public class Function {
 
 		public void setReturnType(String returnType) {
 			this.returnType = returnType;
-		}
-
-
-		public void setSufix(String suffix) {
-			this.suffix = suffix;
 		}
 
 		public String getName() {
@@ -149,7 +134,7 @@ public class Function {
 						+	"\t}\n\n");
 			}
 
-			strbldr.append("\ttracepoint(" + tracepoint_provider + ", cl_function, \"" + this.name + "\", 0");
+			strbldr.append("\ttracepoint(" + tracepoint_provider + ", cl_function, API_CALL_" + this.getName().toUpperCase() + ", 0");
 
 			// API CALL parameters
 			//		for(Parameter param: parameters) {
@@ -179,7 +164,7 @@ public class Function {
 				}
 			}
 
-			strbldr.append(");\n\ttracepoint(" + tracepoint_provider + ", cl_function, \"" + this.name + "\", 1);\n");
+			strbldr.append(");\n\ttracepoint(" + tracepoint_provider + ", cl_function, API_CALL_" + this.getName().toUpperCase() + ", 1);\n");
 
 			if(commDevice) {
 				strbldr.append("\n\tint r = reallib_clSetEventCallback(*event, CL_COMPLETE, &eventCompleted, (toDelete)?&ev_delete:&ev_keep);\n"

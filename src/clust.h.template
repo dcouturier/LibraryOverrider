@@ -14,6 +14,8 @@
 typedef int bool;
 enum { false, true };
 
+[[[clapicallenum]]]
+
 [[[functionprototypes]]]
 
 #ifdef __cplusplus
