@@ -292,7 +292,7 @@ void CL_CALLBACK eventCompleted(cl_event event, cl_int cmd_exec_status, void *us
 	ret = reallib_clGetEventInfo(event,CL_EVENT_COMMAND_QUEUE,sizeof(cl_command_queue), &queue, NULL);
 	if(ret != CL_SUCCESS) fprintf(stderr, "CLUST::eventCompleted:error->CL_EVENT_COMMAND_QUEUE returned %d\n", ret);
 	// Record with UST tracepoint
-	tracepoint(clust_provider, clust_device_event, queue, command, start, end);
+	tracepoint(clust_provider, clust_device_event, (ulong)queue, command, start, end);
 #ifdef __DEBUG__
 	struct timespec ts;
 	clock_gettime(CLOCK_MONOTONIC, &ts);
