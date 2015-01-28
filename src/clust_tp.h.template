@@ -13,7 +13,7 @@ TRACEPOINT_EVENT(
 		clust_provider,
 		cl_function,
     TP_ARGS(
-        int, api_call_id_arg, int, start_arg
+        unsigned char, api_call_id_arg, int, start_arg
     ),
     TP_FIELDS(
     	ctf_integer(unsigned char, api_call_id_field, api_call_id_arg)
@@ -28,7 +28,7 @@ TRACEPOINT_EVENT(
         ulong, queue_arg, int, command_arg, ulong, start_arg, ulong, end_arg
     ),
     TP_FIELDS(
-            ctf_integer(ulong, queue_field, queue_arg)
+            ctf_integer_hex(ulong, queue_field, queue_arg)
             ctf_integer(int, command_field, command_arg)
             ctf_integer(ulong, start_field, start_arg)
             ctf_integer(ulong, end_field, end_arg)
