@@ -128,13 +128,15 @@ public class Function {
 			if(commDevice) {
 				strbldr.append("\tbool toDelete = false;\n"
 						+	"\tif(event == NULL) {\n"
+						+	"#ifdef __DEBUG__\n"
 						+	"\t\tfprintf(stdout, \"CLUST::" + this.name + ": Creating event dynamically...\\\\n\");\n"
+						+	"#endif\n"
 						+	"\t\tevent = malloc(sizeof(cl_event));\n"
 						+	"\t\ttoDelete = true;\n"
 						+	"\t}\n\n");
 			}
 
-			strbldr.append("\ttracepoint(" + tracepoint_provider + ", cl_function, API_CALL_" + this.getName().toUpperCase() + ", 0");
+			strbldr.append("\ttracepoint(" + tracepoint_provider + ", cl_" + this.getName()  + "_start");
 
 			// API CALL parameters
 			//		for(Parameter param: parameters) {
@@ -164,7 +166,7 @@ public class Function {
 				}
 			}
 
-			strbldr.append(");\n\ttracepoint(" + tracepoint_provider + ", cl_function, API_CALL_" + this.getName().toUpperCase() + ", 1);\n");
+			strbldr.append(");\n\ttracepoint(" + tracepoint_provider + ", cl_" + this.getName()  + "_end);\n");
 
 			if(commDevice) {
 				strbldr.append("\n\tint r = reallib_clSetEventCallback(*event, CL_COMPLETE, &eventCompleted, (toDelete)?&ev_delete:&ev_keep);\n"

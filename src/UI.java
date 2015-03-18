@@ -213,8 +213,45 @@ public class UI extends JFrame {
 	
 
 	private String genTpHeader() {
+		
+		/*
+		TRACEPOINT_EVENT(
+				clust_provider,
+				cl_<functionName>,
+		    TP_ARGS(
+		    ),
+		    TP_FIELDS(
+		    )
+		)
+		*/
+		StringBuilder strbldr = new StringBuilder();
+
+		for(Function fct: functions) {
+			strbldr.append(
+					"TRACEPOINT_EVENT(\n" +
+							"	clust_provider,\n" +
+							"	cl_" + fct.getName() + "_start,\n" +
+							"TP_ARGS(\n" +
+							"),\n" +
+							"TP_FIELDS(\n" +
+							")\n" +
+					")\n");
+			strbldr.append(
+					"TRACEPOINT_EVENT(\n" +
+							"	clust_provider,\n" +
+							"	cl_" + fct.getName() + "_end,\n" +
+							"TP_ARGS(\n" +
+							"),\n" +
+							"TP_FIELDS(\n" +
+							")\n" +
+					")\n");
+		}
+		
+		
 		String template = getRessourceAsString("clust_tp.h.template");
 
+		template = template.replaceAll("\\[\\[\\[apifunctiontracepoints\\]\\]\\]", strbldr.toString());
+		
 		return template;
 	}
 	
