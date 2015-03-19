@@ -164,7 +164,9 @@ void CL_CALLBACK eventCompleted(cl_event event, cl_int cmd_exec_status, void *us
 						command_name_str, start,end,(end-start),queue,command,ts.tv_nsec+(ts.tv_sec*1000000000));
 #endif
 	if(*releaseEvent == ev_delete) {
-		fprintf(stdout, "\tReleasing Event...\n");
+#ifdef __DEBUG__
+		fprintf(stdout, "CLUST::eventCompleted: Dynamically releasing Event...\n");
+#endif
 		reallib_clReleaseEvent(event);
 	}
 }
