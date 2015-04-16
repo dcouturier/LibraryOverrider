@@ -126,24 +126,21 @@ public class Function {
 			}
 
 			if(commDevice) {
-				strbldr.append("\tbool toDelete = false;\n"
-						+	"\tif(event == NULL) {\n"
+				strbldr.append("\tconst bool trace = __tracepoint_" + tracepoint_provider + "___clust_device_event.state;\n"
+						+ 	"\tbool toDelete = false;\n"
+						+	"\tif(caa_unlikely(trace)) {\n"
+						+ 	"\t\tif(event == NULL) {\n"
 						+	"#ifdef __DEBUG__\n"
-						+	"\t\tfprintf(stdout, \"CLUST::" + this.name + ": Creating event dynamically...\\\\n\");\n"
+						+	"\t\t\tfprintf(stdout, \"CLUST::" + this.name + ": Creating event dynamically...\\\\n\");\n"
 						+	"#endif\n"
-						+	"\t\tevent = malloc(sizeof(cl_event));\n"
-						+	"\t\ttoDelete = true;\n"
-						+	"\t}\n\n");
+						+	"\t\t\tevent = malloc(sizeof(cl_event));\n"
+						+	"\t\t\ttoDelete = true;\n"
+						+	"\t\t}\n"
+						+ 	"\t}\n\n");
 			}
-
-			strbldr.append("\ttracepoint(" + tracepoint_provider + ", cl_" + this.getName()  + "_start");
-
-			// API CALL parameters
-			//		for(Parameter param: parameters) {
-			//			strbldr.append(", " + param.getName());
-			//		}
-
-			strbldr.append(");\n");
+			
+			strbldr.append("\ttracepoint(" + tracepoint_provider + ", cl_" + this.getName()  + "_start);\n");
+			
 			strbldr.append("\t" + this.returnType + " ret = reallib_" + this.name + "(");
 
 			for(int i = 0; i < paramSize - 1; i++) {
@@ -166,12 +163,15 @@ public class Function {
 				}
 			}
 
-			strbldr.append(");\n\ttracepoint(" + tracepoint_provider + ", cl_" + this.getName()  + "_end);\n");
+			strbldr.append(");\n");
 
+			strbldr.append("\ttracepoint(" + tracepoint_provider + ", cl_" + this.getName()  + "_end);\n");
 			if(commDevice) {
-				strbldr.append("\n\tint r = reallib_clSetEventCallback(*event, CL_COMPLETE, &eventCompleted, (toDelete)?&ev_delete:&ev_keep);\n"
-						+"\tif(r != CL_SUCCESS) fprintf(stderr, \"CLUST::" + this.name + "->clSetEventCallback:error->%d\\\\n\", r);\n\n");
-			}
+				strbldr.append("\n\tif(caa_unlikely(trace)) {\n"
+						+ "\t\tint r = reallib_clSetEventCallback(*event, CL_COMPLETE, &eventCompleted, (toDelete)?&ev_delete:&ev_keep);\n"
+						+"\t\tif(r != CL_SUCCESS) fprintf(stderr, \"CLUST::" + this.name + "->clSetEventCallback:error->%d\\\\n\", r);\n"
+								+ "\t}\n\n");
+			} 
 			
 			strbldr.append("\treturn ret;\n}");
 			return strbldr.toString();
